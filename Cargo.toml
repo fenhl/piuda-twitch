@@ -1,0 +1,32 @@
+[package]
+name = "piuda"
+version = "0.1.0"
+authors = ["Fenhl <fenhl@fenhl.net>"]
+edition = "2018"
+
+[dependencies]
+lazy_static = "1"
+regex = "1"
+serde_json = "1"
+xdg-basedir = "1"
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.derive_more]
+version = "0.99"
+default-features = false
+features = ["from"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.tokio]
+version = "0.2"
+features = ["macros", "rt-threaded"]
+
+[dependencies.twitchchat]
+version = "0.12"
+features = ["tokio", "tokio-rustls", "tokio-util", "webpki-roots"]
