@@ -1,0 +1,14 @@
+[Unit]
+Description=Piuda, Fenhl's Twitch chat bot
+Documentation=https://github.com/fenhl/piuda-twitch
+After=network.target
+
+[Service]
+Restart=always
+ExecStart=/home/fenhl/.cargo/bin/cargo run --release
+User=fenhl
+Group=fenhl
+WorkingDirectory=/opt/git/github.com/fenhl/piuda-twitch/master
+
+[Install]
+WantedBy=multi-user.target
