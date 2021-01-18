@@ -4,29 +4,32 @@ use {
     std::{
         fmt,
         io,
-        process::exit
+        process::exit,
     },
     derive_more::From,
     lazy_static::lazy_static,
+    parking_lot::RwLock,
     regex::Regex,
     twitchchat::{
         PrivmsgExt as _,
         messages::Commands,
         runner::{
             AsyncRunner,
-            Status
-        }
+            Status,
+        },
     },
     crate::{
         commands::COMMANDS,
         config::Config,
-        data::Data
-    }
+        data::Data,
+        state::State,
+    },
 };
 
 mod commands;
 mod config;
 mod data;
+mod state;
 
 lazy_static! {
     static ref COMMAND_REGEX: Regex = Regex::new("^!([a-z]+)(?: (.*))?$").expect("failed to build command regex");
@@ -39,7 +42,8 @@ enum Error {
     Io(io::Error),
     Json(serde_json::Error),
     Runner(twitchchat::RunnerError),
-    UserConfig(twitchchat::twitch::UserConfigError)
+    Shlex(shlex::Error),
+    UserConfig(twitchchat::twitch::UserConfigError),
 }
 
 impl fmt::Display for Error {
@@ -50,7 +54,8 @@ impl fmt::Display for Error {
             Error::Io(e) => write!(f, "I/O error: {}", e),
             Error::Json(e) => write!(f, "JSON error: {}", e),
             Error::Runner(e) => write!(f, "runner error: {}", e),
-            Error::UserConfig(e) => write!(f, "error generating chat user config: {}", e)
+            Error::Shlex(e) => write!(f, "error parsing command arguments: {}", e),
+            Error::UserConfig(e) => write!(f, "error generating chat user config: {}", e),
         }
     }
 }
@@ -58,8 +63,9 @@ impl fmt::Display for Error {
 async fn main_inner() -> Result<(), Error> {
     let config = Config::new()?;
     let mut data = Data::new()?;
+    let state = RwLock::new(State::default());
     let user_config = config.user_config()?;
-    let connector = twitchchat::connector::tokio::Connector::twitch();
+    let connector = twitchchat::connector::tokio::Connector::twitch()?;
     let mut runner = AsyncRunner::connect(connector, &user_config).await?;
     eprintln!("connecting, we are: {}", runner.identity.username());
     eprintln!("joining: #{}", config.channel_username);
@@ -71,7 +77,7 @@ async fn main_inner() -> Result<(), Error> {
             Status::Message(Commands::Privmsg(pm)) => {
                 if let Some(captures) = COMMAND_REGEX.captures(pm.data()) {
                     if let Some(command) = COMMANDS.get(&captures[1]) {
-                        command(pm, &mut writer)?;
+                        command(pm, &mut writer, &state)?;
                     } else {
                         writer.say(&pm, "unknown command")?;
                         data.log_unknown_command(captures[1].to_owned(), pm);
@@ -80,7 +86,8 @@ async fn main_inner() -> Result<(), Error> {
                 }
             }
             Status::Message(_) => {}
-            Status::Quit | Status::Eof => break //TODO auto-reconnect?
+            Status::Quit | Status::Eof => break, //TODO auto-reconnect?
+            //TODO handle “stopped streaming” events to clear state
         }
     }
     eprintln!("end of main loop");

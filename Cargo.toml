@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1"
+parking_lot = "0.11"
 regex = "1"
 serde_json = "1"
 xdg-basedir = "1"
@@ -23,10 +24,13 @@ features = ["from"]
 version = "1"
 features = ["derive"]
 
+[dependencies.shlex]
+git = "https://github.com/fenhl/rust-shlex"
+
 [dependencies.tokio]
-version = "0.2"
+version = "0.2" #TODO update to 0.3/1.0 once supported by twitchchat
 features = ["macros", "rt-threaded"]
 
 [dependencies.twitchchat]
-version = "0.12"
-features = ["tokio", "tokio-rustls", "tokio-util", "webpki-roots"]
+version = "0.14"
+features = ["async", "tokio", "tokio-rustls", "tokio-util", "webpki-roots"]
