@@ -1,4 +1,5 @@
-#![deny(rust_2018_idioms, unused, unused_import_braces, unused_lifetimes, unused_qualifications, warnings)]
+#![deny(rust_2018_idioms, unused, unused_crate_dependencies, unused_import_braces, unused_lifetimes, unused_qualifications, warnings)]
+#![forbid(unsafe_code)]
 
 use {
     std::{
@@ -42,7 +43,7 @@ enum Error {
     Io(io::Error),
     Json(serde_json::Error),
     Runner(twitchchat::RunnerError),
-    Shlex(shlex::Error),
+    Shlex,
     UserConfig(twitchchat::twitch::UserConfigError),
 }
 
@@ -54,7 +55,7 @@ impl fmt::Display for Error {
             Error::Io(e) => write!(f, "I/O error: {}", e),
             Error::Json(e) => write!(f, "JSON error: {}", e),
             Error::Runner(e) => write!(f, "runner error: {}", e),
-            Error::Shlex(e) => write!(f, "error parsing command arguments: {}", e),
+            Error::Shlex => write!(f, "error parsing command arguments"),
             Error::UserConfig(e) => write!(f, "error generating chat user config: {}", e),
         }
     }
@@ -64,6 +65,7 @@ async fn main_inner() -> Result<(), Error> {
     let config = Config::new()?;
     let mut data = Data::new()?;
     let state = RwLock::new(State::default());
+    let commands = COMMANDS.keys().copied().collect();
     let user_config = config.user_config()?;
     let connector = twitchchat::connector::tokio::Connector::twitch()?;
     let mut runner = AsyncRunner::connect(connector, &user_config).await?;
@@ -77,7 +79,9 @@ async fn main_inner() -> Result<(), Error> {
             Status::Message(Commands::Privmsg(pm)) => {
                 if let Some(captures) = COMMAND_REGEX.captures(pm.data()) {
                     if let Some(command) = COMMANDS.get(&captures[1]) {
-                        command(pm, &mut writer, &state)?;
+                        command(pm, &mut writer, &state, &commands)?;
+                    } else if let Some(text) = state.read().simple_commands.get(&captures[1]) {
+                        writer.say(&pm, text)?;
                     } else {
                         writer.say(&pm, "unknown command")?;
                         data.log_unknown_command(captures[1].to_owned(), pm);
@@ -87,7 +91,7 @@ async fn main_inner() -> Result<(), Error> {
             }
             Status::Message(_) => {}
             Status::Quit | Status::Eof => break, //TODO auto-reconnect?
-            //TODO handle “stopped streaming” events to clear state
+            //TODO handle “stopped streaming” and “changed category” events to clear state
         }
     }
     eprintln!("end of main loop");
