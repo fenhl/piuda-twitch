@@ -30,5 +30,6 @@ version = "1"
 features = ["macros", "rt-multi-thread"]
 
 [dependencies.twitchchat]
-git = "https://github.com/museun/twitchchat"
+git = "https://github.com/museun/twitchchat" #TODO get from crates.io once 6292ca3 is published
+rev = "6292ca3c523bcb31a2c746aaae88439fd0fb4c55"
 features = ["async", "tokio", "tokio-rustls", "tokio-util", "webpki-roots"]
