@@ -3,9 +3,9 @@
 
 use {
     std::{
+        convert::Infallible as Never,
         fmt,
         io,
-        process::exit,
     },
     derive_more::From,
     lazy_static::lazy_static,
@@ -40,6 +40,7 @@ lazy_static! {
 enum Error {
     Config(crate::config::Error),
     DataSave(crate::data::SaveError),
+    EventStreamEnded,
     Io(io::Error),
     Json(serde_json::Error),
     Runner(twitchchat::RunnerError),
@@ -52,6 +53,7 @@ impl fmt::Display for Error {
         match self {
             Error::Config(e) => write!(f, "config error: {}", e),
             Error::DataSave(e) => e.fmt(f),
+            Error::EventStreamEnded => write!(f, "Twitch chat event stream ended unexpectedly"),
             Error::Io(e) => write!(f, "I/O error: {}", e),
             Error::Json(e) => write!(f, "JSON error: {}", e),
             Error::Runner(e) => write!(f, "runner error: {}", e),
@@ -61,7 +63,8 @@ impl fmt::Display for Error {
     }
 }
 
-async fn main_inner() -> Result<(), Error> {
+#[wheel::main]
+async fn main() -> Result<Never, Error> {
     let config = Config::new()?;
     let mut data = Data::new()?;
     let state = RwLock::new(State::default());
@@ -94,17 +97,5 @@ async fn main_inner() -> Result<(), Error> {
             //TODO handle “stopped streaming” and “changed category” events to clear state
         }
     }
-    eprintln!("end of main loop");
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() {
-    match main_inner().await {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("error in piuda-twitch: {}", e);
-            exit(1)
-        }
-    }
+    Err(Error::EventStreamEnded)
 }

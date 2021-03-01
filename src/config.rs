@@ -27,12 +27,13 @@ impl fmt::Display for Error {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct Config {
     #[serde(default = "make_piuda")]
     pub(crate) bot_username: String,
     #[serde(default = "make_fenhl")]
     pub(crate) channel_username: String,
-    pub(crate) token: String
+    pub(crate) token: String,
 }
 
 impl Config {
