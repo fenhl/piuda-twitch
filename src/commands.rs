@@ -42,9 +42,9 @@ commands! {
     arena, id(privmsg, writer, state, _) {
         //TODO check whether I'm playing Smash Ultimate
         let args = shlex::split(privmsg.data()).ok_or(Error::Shlex)?;
-        match args.first().map(|arg| &arg[..]) {
+        match args.get(1).map(|arg| &arg[..]) {
             Some("set") => if privmsg.is_broadcaster() || privmsg.is_moderator() {
-                state.write().arena = args.get(1).cloned(); //TODO validate Smash Ultimate arena ID
+                state.write().arena = args.get(2).cloned(); //TODO validate Smash Ultimate arena ID
                 writer.say(&privmsg, "arena ID updated")?;
             } else {
                 writer.say(&privmsg, "this subcommand is moderator-only")?;
@@ -67,7 +67,7 @@ commands! {
             return Ok(())
         }
         let args = shlex::split(privmsg.data()).ok_or(Error::Shlex)?;
-        match args.first().map(|arg| &arg[..]) {
+        match args.get(1).map(|arg| &arg[..]) {
             Some("add") | Some("create") | Some("new") => {
                 if let [cmd_name, cmd_text] = &args[2..] {
                     if commands.contains(&(&cmd_name[..])) {
